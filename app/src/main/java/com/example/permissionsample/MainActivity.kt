@@ -17,26 +17,31 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        request_permission_btn.setOnClickListener { requestCameraPermission() }
+        request_permission_btn.setOnClickListener {
+            requestPermission(Manifest.permission.CAMERA, CAMERA_PERMISSION_REQUEST_CODE)
+        }
     }
 
-    private fun requestCameraPermission() {
-        val permission = Manifest.permission.CAMERA
+    private fun requestPermission(permission: String, permissionCode: Int) {
         val sharedPreferences = getSharedPreferences("permission_settings", MODE_PRIVATE)
         val permissionIsGranted =
-                ContextCompat.checkSelfPermission(this, permission) == PERMISSION_GRANTED
+                ActivityCompat.checkSelfPermission(this, permission) == PERMISSION_GRANTED
         if (permissionIsGranted) {
             toast("Permission is granted")
             return
         } else {
             val shouldShowRequestPermissionRationale =
                     ActivityCompat.shouldShowRequestPermissionRationale(this, permission)
+            if (shouldShowRequestPermissionRationale) {
+                toast("You should show rationale")
+                return
+            }
             val isPermissionRequested = sharedPreferences.getBoolean(permission, false)
             val isPermissionDeniedForever = !shouldShowRequestPermissionRationale && isPermissionRequested
             if (isPermissionDeniedForever) {
                 toast("Permission is denied forever")
             } else {
-                ActivityCompat.requestPermissions(this, arrayOf(permission), CAMERA_PERMISSION_REQUEST_CODE)
+                ActivityCompat.requestPermissions(this, arrayOf(permission), permissionCode)
                 sharedPreferences.edit { putBoolean(permission, true) }
             }
         }
