@@ -1,7 +1,10 @@
 package com.example.permissionsample
 
 import android.Manifest
+import android.app.Activity
 import android.app.Dialog
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
@@ -46,21 +49,17 @@ class MainActivity : AppCompatActivity(), SimpleDialog.SimpleDialogListener {
         requestPermission(permission, CAMERA_PERMISSION_REQUEST_CODE)
     }
 
-    override fun onNegativeClick() {
-        // Nothing to do
-    }
-
     private fun requestPermissionOr(permission: String, permissionCode: Int) {
-        val statusOfPermission = getStatusOfPermission(permission)
+        val statusOfPermission = getStateOfPermission(this, permissionSettings, permission)
         when(statusOfPermission) {
-            PermissionStatus.GRANTED -> {
+            PermissionState.GRANTED -> {
                 toast("Permission is granted")
             }
-            PermissionStatus.NOT_REQUESTED -> {
+            PermissionState.NOT_REQUESTED -> {
                 toast("Permission is not requested")
                 requestPermission(permission, permissionCode)
             }
-            PermissionStatus.DENIED -> {
+            PermissionState.DENIED -> {
                 toast("Permission was denied")
                 showPermissionRationale(permission)
             }
@@ -72,37 +71,7 @@ class MainActivity : AppCompatActivity(), SimpleDialog.SimpleDialogListener {
 
     private fun requestPermission(permission: String, permissionCode: Int) {
         ActivityCompat.requestPermissions(this, arrayOf(permission), permissionCode)
-        setPermissionRequested(permission)
-    }
-
-    private fun getStatusOfPermission(permission: String): PermissionStatus {
-        return when {
-            isPermissionGranted(permission) -> PermissionStatus.GRANTED
-            !isPermissionRequested(permission) -> PermissionStatus.NOT_REQUESTED
-            isPermissionDenied(permission) -> PermissionStatus.DENIED
-            else -> PermissionStatus.DENIED_FOREVER
-        }
-    }
-
-    private fun isPermissionDenied(permission: String): Boolean {
-        return isShouldShowRequestPermissionRationale(permission) &&
-                !isPermissionGranted(permission)
-    }
-
-    private fun isPermissionGranted(permission: String): Boolean {
-        return ActivityCompat.checkSelfPermission(this, permission) == PERMISSION_GRANTED
-    }
-
-    private fun isPermissionRequested(permission: String): Boolean {
-        return permissionSettings.getBoolean(permission, false)
-    }
-
-    private fun setPermissionRequested(permission: String) {
-        permissionSettings.edit { putBoolean(permission, true) }
-    }
-
-    private fun isShouldShowRequestPermissionRationale(permission: String): Boolean {
-        return ActivityCompat.shouldShowRequestPermissionRationale(this, permission)
+        setPermissionRequested(permissionSettings, permission)
     }
 
     private fun showPermissionRationale(permission: String) {
@@ -114,8 +83,84 @@ class MainActivity : AppCompatActivity(), SimpleDialog.SimpleDialogListener {
     }
 }
 
-enum class PermissionStatus {
-    GRANTED, NOT_REQUESTED, DENIED, DENIED_FOREVER
+/**
+ * Состояние разрешения
+ */
+enum class PermissionState {
+    /**
+     * Пользователь выдал разрешение
+     */
+    GRANTED,
+    /**
+     * Пользователь не запрашивал разрешение
+     */
+    NOT_REQUESTED,
+    /**
+     * Пользователь отклонил разрешение
+     */
+    DENIED,
+    /**
+     * Пользователь навсегда отклонил разрешение
+     */
+    DENIED_FOREVER
+}
+
+/**
+ * Определяет состояние разрешение
+ * @param permission - проверяемое разрешение
+ *
+ * @return состояние разрешения
+ */
+private fun getStateOfPermission(
+    activity: Activity,
+    permissionSettings: SharedPreferences,
+    permission: String
+): PermissionState {
+    return when {
+        !isPermissionRequested(permissionSettings, permission) -> PermissionState.NOT_REQUESTED
+        isPermissionGranted(activity, permission) -> PermissionState.GRANTED
+        isPermissionDenied(activity, permission) -> PermissionState.DENIED
+        else -> PermissionState.DENIED_FOREVER
+    }
+}
+
+/**
+ * Отказано ли в выдаче разрешения
+ * @param permission - проверяемое разрешение
+ */
+private fun isPermissionDenied(activity: Activity, permission: String): Boolean {
+    return isShouldShowRequestPermissionRationale(activity, permission)
+}
+
+/**
+ * Выдано ли разрешение
+ * @param permission - проверяемое разрешение
+ */
+private fun isPermissionGranted(context: Context, permission: String): Boolean {
+    return ActivityCompat.checkSelfPermission(context, permission) == PERMISSION_GRANTED
+}
+
+/**
+ * Запрашивалось ли разрешение ранее
+ * @param permission - проверяемое разрешение
+ */
+private fun isPermissionRequested(permissionSettings: SharedPreferences, permission: String): Boolean {
+    return permissionSettings.getBoolean(permission, false)
+}
+
+/**
+ * Фиксация того, что разрешение запрошено
+ */
+private fun setPermissionRequested(permissionSettings: SharedPreferences, permission: String) {
+    permissionSettings.edit { putBoolean(permission, true) }
+}
+
+/**
+ * Нужно ли объяснить пользователю необходимость выдачи разрешения
+ * @param permission - проверяемое разрешение
+ */
+private fun isShouldShowRequestPermissionRationale(activity: Activity, permission: String): Boolean {
+    return ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
 }
 
 class SimpleDialog: DialogFragment() {
@@ -147,12 +192,11 @@ class SimpleDialog: DialogFragment() {
                 val permission = arguments?.getString(PERMISSION_KEY).orEmpty()
                 clickListener?.onPositiveClick(permission)
             }.setNegativeButton("Cancel") { dialog, wich ->
-                clickListener?.onNegativeClick()
+                dialog.dismiss()
             }.create()
     }
 
     interface SimpleDialogListener {
         fun onPositiveClick(permission: String)
-        fun onNegativeClick()
     }
 }
