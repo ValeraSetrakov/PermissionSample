@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
@@ -33,14 +34,27 @@ class MainActivity : AppCompatActivity(), SimpleDialog.SimpleDialogListener {
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == CAMERA_PERMISSION_REQUEST_CODE) {
+            val permission = permissions.first()
             val permissionIsGranted = grantResults.any { it == PERMISSION_GRANTED }
             if (permissionIsGranted) {
-                toast("Permission is granted")
+                toast("$permission is granted")
+                // do something if permission is granted
             } else {
-                toast("Permission is denied")
+                if (isAndroidVersionROrNewer() &&
+                    isShouldShowRequestPermissionRationale(this, permission)
+                ) {
+                    toast("$permission is denied")
+                } else {
+                    // do something if permission is denied forever
+                    toast("$permission is denied forever")
+                }
             }
         }
     }
@@ -49,21 +63,32 @@ class MainActivity : AppCompatActivity(), SimpleDialog.SimpleDialogListener {
         requestPermission(permission, CAMERA_PERMISSION_REQUEST_CODE)
     }
 
+    /**
+     * Запрос разрешения с учетом его состояния [PermissionState]
+     * @param permission - запрашиваемое разрешение
+     * @param permissionCode - код результата запрашиваемого разрешения
+     */
     private fun requestPermissionByState(permission: String, permissionCode: Int) {
-        when(getStateOfPermission(this, permissionSettings, permission)) {
+        when (getStateOfPermission(this, permissionSettings, permission)) {
             PermissionState.GRANTED -> {
-                toast("Permission is granted")
+                toast("$permission is granted")
+                // do something if permission is granted
             }
             PermissionState.NOT_REQUESTED -> {
-                toast("Permission is not requested")
+                toast("$permission is not requested")
                 requestPermission(permission, permissionCode)
             }
             PermissionState.DENIED -> {
-                toast("Permission was denied")
+                toast("$permission was denied")
                 showPermissionRationale(permission)
             }
             else -> {
-                toast("Permission is denied forever")
+                if (isAndroidVersionROrNewer()) {
+                    requestPermission(permission, permissionCode)
+                } else {
+                    // do something if permission is denied forever
+                    toast("$permission is denied forever")
+                }
             }
         }
     }
@@ -90,18 +115,28 @@ enum class PermissionState {
      * Пользователь выдал разрешение
      */
     GRANTED,
+
     /**
      * Пользователь не запрашивал разрешение
      */
     NOT_REQUESTED,
+
     /**
      * Пользователь отклонил разрешение
      */
     DENIED,
+
     /**
      * Пользователь навсегда отклонил разрешение
      */
     DENIED_FOREVER
+}
+
+/**
+ * Проверка на то, что текущая версия системы R или более новая
+ */
+private fun isAndroidVersionROrNewer(): Boolean {
+    return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
 }
 
 /**
@@ -143,7 +178,10 @@ private fun isPermissionGranted(context: Context, permission: String): Boolean {
  * Запрашивалось ли разрешение ранее
  * @param permission - проверяемое разрешение
  */
-private fun isPermissionRequested(permissionSettings: SharedPreferences, permission: String): Boolean {
+private fun isPermissionRequested(
+    permissionSettings: SharedPreferences,
+    permission: String
+): Boolean {
     return permissionSettings.getBoolean(permission, false)
 }
 
@@ -158,11 +196,14 @@ private fun setPermissionRequested(permissionSettings: SharedPreferences, permis
  * Нужно ли объяснить пользователю необходимость выдачи разрешения
  * @param permission - проверяемое разрешение
  */
-private fun isShouldShowRequestPermissionRationale(activity: Activity, permission: String): Boolean {
+private fun isShouldShowRequestPermissionRationale(
+    activity: Activity,
+    permission: String
+): Boolean {
     return ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
 }
 
-class SimpleDialog: DialogFragment() {
+class SimpleDialog : DialogFragment() {
 
     companion object {
         private const val PERMISSION_KEY = "PERMISSION_KEY"
