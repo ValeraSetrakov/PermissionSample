@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity(), SimpleDialog.SimpleDialogListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         request_permission_btn.setOnClickListener {
-            requestPermissionOr(Manifest.permission.CAMERA, CAMERA_PERMISSION_REQUEST_CODE)
+            requestPermissionByState(Manifest.permission.CAMERA, CAMERA_PERMISSION_REQUEST_CODE)
         }
     }
 
@@ -49,9 +49,8 @@ class MainActivity : AppCompatActivity(), SimpleDialog.SimpleDialogListener {
         requestPermission(permission, CAMERA_PERMISSION_REQUEST_CODE)
     }
 
-    private fun requestPermissionOr(permission: String, permissionCode: Int) {
-        val statusOfPermission = getStateOfPermission(this, permissionSettings, permission)
-        when(statusOfPermission) {
+    private fun requestPermissionByState(permission: String, permissionCode: Int) {
+        when(getStateOfPermission(this, permissionSettings, permission)) {
             PermissionState.GRANTED -> {
                 toast("Permission is granted")
             }
