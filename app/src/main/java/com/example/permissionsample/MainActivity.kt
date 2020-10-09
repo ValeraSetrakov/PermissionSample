@@ -4,16 +4,20 @@ import android.Manifest
 import android.app.Activity
 import android.app.Dialog
 import android.content.Context
-import androidx.appcompat.app.AppCompatActivity
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.PermissionChecker.PERMISSION_GRANTED
 import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentManager
 import kotlinx.android.synthetic.main.activity_main.*
+
 
 private const val CAMERA_PERMISSION_REQUEST_CODE = 111
 
@@ -45,6 +49,7 @@ class MainActivity : AppCompatActivity(), SimpleDialog.SimpleDialogListener {
                 } else {
                     // do something if permission is denied forever
                     toast("$permission is denied forever")
+                    openAppSettingScreen()
                 }
             }
         }
@@ -80,6 +85,13 @@ class MainActivity : AppCompatActivity(), SimpleDialog.SimpleDialogListener {
 
     private fun showPermissionRationale(permission: String) {
         SimpleDialog.show(supportFragmentManager, permission)
+    }
+
+    private fun openAppSettingScreen() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        val uri: Uri = Uri.fromParts("package", packageName, null)
+        intent.data = uri
+        startActivity(intent)
     }
 
     private fun toast(text: String) {
